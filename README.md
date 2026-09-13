@@ -34,7 +34,14 @@ Full details in [`spec/SPEC.md`](spec/SPEC.md).
 
 ## Deployments
 
-None yet. Canonical deployment will be Ethereum mainnet via CREATE2, so the address is the same on every chain it is mirrored to.
+Deployed via CREATE2, so addresses are the same on every chain. Canonical deployment will be Ethereum mainnet; until then, Sepolia.
+
+| Chain | DirectiveRegistry | PassportController | ZKPassport domain |
+|---|---|---|---|
+| Sepolia (11155111) | [`0xD0782096437b6c2B668E64717556fE73f5C72eF4`](https://sepolia.etherscan.io/address/0xD0782096437b6c2B668E64717556fE73f5C72eF4) | [`0x47cF8D3281aF4d858F3fdf55662fD986274403A4`](https://sepolia.etherscan.io/address/0x47cF8D3281aF4d858F3fdf55662fD986274403A4) | donotresurrect.eth |
+| Mainnet | not yet | not yet | |
+
+ZKPassport RootVerifier: `0x1D000001000EFD9a6371f4d90bB8920D5431c0D8` on all networks.
 
 ## Development
 

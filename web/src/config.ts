@@ -32,8 +32,8 @@ export const deployments: Deployment[] = [
   {
     chain: sepolia,
     zkChain: "ethereum_sepolia",
-    registry: null,
-    controller: null,
+    registry: "0xD0782096437b6c2B668E64717556fE73f5C72eF4",
+    controller: "0x47cF8D3281aF4d858F3fdf55662fD986274403A4",
     rpc: "https://ethereum-sepolia-rpc.publicnode.com",
     devMode: true,
   },
