@@ -9,13 +9,16 @@ import {
   stringToBytes,
   concat,
   encodeAbiParameters,
+  zeroAddress,
   type Address,
   type Hex,
   type PublicClient,
   type WalletClient,
 } from "viem";
-import { registryAbi } from "./abi";
-import { deployments, KIND_DESCRIPTIONS, KIND_NAMES, type Deployment } from "./config";
+import QRCode from "qrcode";
+import { registryAbi, controllerAbi } from "./abi";
+import { deployments, KIND_DESCRIPTIONS, KIND_NAMES, ZK_DOMAIN, type Deployment } from "./config";
+import { requestPassportProof, toVerifierParams } from "./passport";
 
 declare global {
   interface Window {
@@ -38,14 +41,27 @@ const els = {
   doc: $<HTMLTextAreaElement>("doc"),
   uri: $<HTMLInputElement>("uri"),
   docHash: $("docHash"),
+  authority: $<HTMLSelectElement>("authority"),
+  authorityDesc: $("authorityDesc"),
   commit: $<HTMLButtonElement>("commit"),
   declare: $<HTMLButtonElement>("declare"),
+  qr: $("qr"),
+  qrLink: $<HTMLAnchorElement>("qrLink"),
+  qrCanvas: $<HTMLCanvasElement>("qrCanvas"),
+  qrStatus: $("qrStatus"),
   log: $<HTMLPreElement>("log"),
   newController: $<HTMLInputElement>("newController"),
   rotate: $<HTMLButtonElement>("rotate"),
 };
 
 const ZERO32 = `0x${"0".repeat(64)}` as Hex;
+
+const AUTHORITY_DESC: Record<string, string> = {
+  passport:
+    "Your passport is the key. Each change needs a scan in the ZKPassport app; the proof is bound to the exact directive you see here. Lose every wallet you own and you still control the record.",
+  wallet:
+    "The connected wallet's private key is the controller. Lose the key and the record freezes at its last state.",
+};
 
 let deployment: Deployment | null = null;
 let publicClient: PublicClient | null = null;
@@ -74,6 +90,10 @@ function commitmentFor(s: Hex, controller: Address): Hex {
   return keccak256(encodeAbiParameters([{ type: "bytes32" }, { type: "address" }], [s, controller]));
 }
 
+function usePassport(): boolean {
+  return els.authority.value === "passport";
+}
+
 // ---------------------------------------------------------------------
 // UI
 // ---------------------------------------------------------------------
@@ -88,11 +108,14 @@ function refresh() {
   els.subject.textContent = `subject: ${s ?? "—"}`;
   els.docHash.textContent = `conditionsHash: ${conditionsHash()}`;
   els.kindDesc.textContent = KIND_DESCRIPTIONS[Number(els.kind.value)];
-  const ready = !!s && !!deployment?.registry;
-  els.lookup.disabled = !ready;
-  els.commit.disabled = !ready || !account;
-  els.declare.disabled = !ready || !account;
-  els.rotate.disabled = !ready || !account || !isAddress(els.newController.value.trim());
+  els.authorityDesc.textContent = AUTHORITY_DESC[els.authority.value];
+  const hasRegistry = !!deployment?.registry;
+  const hasController = !!deployment?.controller;
+  const canWrite = !!s && !!account && hasRegistry && (!usePassport() || hasController);
+  els.lookup.disabled = !s || !hasRegistry;
+  els.commit.disabled = !canWrite;
+  els.declare.disabled = !canWrite;
+  els.rotate.disabled = !canWrite || !isAddress(els.newController.value.trim());
 }
 
 function describeNet() {
@@ -100,8 +123,9 @@ function describeNet() {
     els.net.textContent = "No wallet connected.";
     return;
   }
-  const addr = deployment.registry ?? "not deployed on this chain";
-  els.net.textContent = `${deployment.chain.name} · registry ${addr}` + (account ? ` · ${account}` : "");
+  const reg = deployment.registry ?? "registry not deployed here";
+  const pc = deployment.controller ?? "passport controller not deployed here";
+  els.net.textContent = `${deployment.chain.name} · ${reg} · ${pc}` + (account ? ` · ${account}` : "");
 }
 
 // ---------------------------------------------------------------------
@@ -144,12 +168,16 @@ async function lookup() {
     args: [s],
   });
   els.record.hidden = false;
-  if (r.controller === "0x0000000000000000000000000000000000000000") {
+  if (r.controller === zeroAddress) {
     els.record.textContent = "No record. Subject is unclaimed.";
     return;
   }
+  const who =
+    deployment.controller && r.controller.toLowerCase() === deployment.controller.toLowerCase()
+      ? `${r.controller} (passport controller)`
+      : r.controller;
   els.record.textContent = [
-    `controller:     ${r.controller}`,
+    `controller:     ${who}`,
     `kind:           ${r.kind} ${KIND_NAMES[r.kind] ?? "(unknown)"}`,
     `conditionsHash: ${r.conditionsHash}`,
     `uri:            ${r.uri || "—"}`,
@@ -168,53 +196,133 @@ async function currentNonce(s: Hex): Promise<bigint> {
   return BigInt(n);
 }
 
-async function send(fn: "commit" | "declare" | "rotate", args: readonly unknown[]) {
-  if (!walletClient || !publicClient || !deployment?.registry || !account) return;
+async function send(
+  target: "registry" | "controller",
+  fn: string,
+  args: readonly unknown[],
+): Promise<boolean> {
+  if (!walletClient || !publicClient || !deployment || !account) return false;
+  const address = target === "registry" ? deployment.registry : deployment.controller;
+  const abi = target === "registry" ? registryAbi : controllerAbi;
+  if (!address) return false;
   try {
     const { request } = await publicClient.simulateContract({
-      address: deployment.registry,
-      abi: registryAbi,
-      functionName: fn,
+      address,
+      abi: abi as any,
+      functionName: fn as any,
       args: args as any,
       account,
     });
-    const hash = await walletClient.writeContract(request);
+    const hash = await walletClient.writeContract(request as any);
     log(`${fn}: sent ${hash}`);
     const receipt = await publicClient.waitForTransactionReceipt({ hash });
     log(`${fn}: ${receipt.status} in block ${receipt.blockNumber}`);
     await lookup();
+    return receipt.status === "success";
   } catch (e: any) {
     log(`${fn}: ${e.shortMessage ?? e.message ?? String(e)}`);
+    return false;
   }
 }
 
+function directive(s: Hex, nonce: bigint) {
+  return {
+    subject: s,
+    kind: Number(els.kind.value),
+    conditionsHash: conditionsHash(),
+    uri: els.uri.value.trim(),
+    nonce,
+  };
+}
+
+// ---------------------------------------------------------------------
+// Passport flow
+// ---------------------------------------------------------------------
+
+async function scanForBinding(binding: Hex, purpose: string) {
+  if (!deployment) throw new Error("not connected");
+  const req = await requestPassportProof({
+    domain: ZK_DOMAIN,
+    chain: deployment.zkChain,
+    devMode: deployment.devMode,
+    binding,
+    purpose,
+  });
+  els.qr.hidden = false;
+  els.qrLink.href = req.url;
+  els.qrStatus.textContent = "Waiting for the app…";
+  await QRCode.toCanvas(els.qrCanvas, req.url, { width: 256, margin: 1 });
+  req.onStatus((s) => (els.qrStatus.textContent = s));
+  log(`passport: request ${req.requestId}`);
+  try {
+    const proof = await req.proof;
+    els.qrStatus.textContent = "Proof received. Submitting…";
+    return toVerifierParams(req.zk, proof, ZK_DOMAIN, deployment.devMode);
+  } finally {
+    setTimeout(() => (els.qr.hidden = true), 4000);
+  }
+}
+
+// ---------------------------------------------------------------------
+// Actions
+// ---------------------------------------------------------------------
+
 async function commit() {
   const s = subject();
-  if (!s || !account) return;
-  await send("commit", [commitmentFor(s, account)]);
-  log("Now wait one block, then Declare.");
+  if (!s || !account || !deployment) return;
+  const ok = usePassport()
+    ? await send("controller", "commit", [s])
+    : await send("registry", "commit", [commitmentFor(s, account)]);
+  if (ok) log("Now wait one block, then Declare.");
 }
 
 async function declare() {
   const s = subject();
-  if (!s) return;
+  if (!s || !deployment || !publicClient) return;
   const nonce = await currentNonce(s);
-  await send("declare", [
-    {
-      subject: s,
-      kind: Number(els.kind.value),
-      conditionsHash: conditionsHash(),
-      uri: els.uri.value.trim(),
-      nonce,
-    },
-  ]);
+  const d = directive(s, nonce);
+  if (!usePassport()) {
+    await send("registry", "declare", [d]);
+    return;
+  }
+  try {
+    const binding = await publicClient.readContract({
+      address: deployment.controller!,
+      abi: controllerAbi,
+      functionName: "declareBinding",
+      args: [d],
+    });
+    const params = await scanForBinding(
+      binding,
+      `Record directive ${KIND_NAMES[d.kind]} for subject ${s.slice(0, 10)}…`,
+    );
+    await send("controller", "declare", [d, params]);
+  } catch (e: any) {
+    log(`passport: ${e.message ?? String(e)}`);
+  }
 }
 
 async function rotate() {
   const s = subject();
   const to = els.newController.value.trim();
-  if (!s || !isAddress(to)) return;
-  await send("rotate", [s, to]);
+  if (!s || !isAddress(to) || !deployment || !publicClient) return;
+  if (!usePassport()) {
+    await send("registry", "rotate", [s, to]);
+    return;
+  }
+  try {
+    const nonce = await currentNonce(s);
+    const binding = await publicClient.readContract({
+      address: deployment.controller!,
+      abi: controllerAbi,
+      functionName: "rotateBinding",
+      args: [s, to, nonce],
+    });
+    const params = await scanForBinding(binding, `Hand control of subject ${s.slice(0, 10)}… to ${to}`);
+    await send("controller", "rotate", [s, to, params]);
+  } catch (e: any) {
+    log(`passport: ${e.message ?? String(e)}`);
+  }
 }
 
 // ---------------------------------------------------------------------
@@ -226,8 +334,9 @@ els.lookup.addEventListener("click", lookup);
 els.commit.addEventListener("click", commit);
 els.declare.addEventListener("click", declare);
 els.rotate.addEventListener("click", rotate);
-for (const el of [els.scheme, els.fp, els.kind, els.doc, els.uri, els.newController]) {
+for (const el of [els.scheme, els.fp, els.kind, els.doc, els.uri, els.newController, els.authority]) {
   el.addEventListener("input", refresh);
+  el.addEventListener("change", refresh);
 }
 refresh();
 describeNet();

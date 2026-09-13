@@ -2,9 +2,14 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>Do Not Resurrect</title>
-    <meta name="description" content="An onchain registry of posthumous directives. The latest signed directive is binding." />
+    <meta name="description" content="Control your connectome. An onchain registry of posthumous directives." />
+    <meta name="theme-color" content="#0b0c0e" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <link rel="icon" href="./icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="./icon.svg" />
     <link rel="stylesheet" href="./src/style.css" />
   </head>
   <body>
@@ -12,7 +17,7 @@
       <header>
         <h1>Do Not Resurrect</h1>
         <p class="lede">
-          A registry of what you want done if someone can one day rebuild you from your brain.
+          Control your connectome. Record what you want done if someone can one day rebuild you from your brain.
           The latest directive you record is binding. Nobody can edit it but you. Nobody can take it down.
         </p>
       </header>
@@ -71,7 +76,19 @@
       </section>
 
       <section class="card">
-        <h2>3. Record it</h2>
+        <h2>3. Authority</h2>
+        <label>
+          Who controls this record
+          <select id="authority">
+            <option value="passport">My passport (ZKPassport proof, recommended)</option>
+            <option value="wallet">This wallet's key</option>
+          </select>
+        </label>
+        <p id="authorityDesc" class="muted"></p>
+      </section>
+
+      <section class="card">
+        <h2>4. Record it</h2>
         <p>
           First time for this subject: <b>commit</b>, wait one block, then <b>declare</b>.
           Updates only need <b>declare</b>. The latest one wins.
@@ -80,11 +97,20 @@
           <button id="commit" disabled>Commit</button>
           <button id="declare" disabled>Declare</button>
         </div>
+        <div id="qr" hidden>
+          <p class="muted">Scan with the ZKPassport app, or <a id="qrLink" href="#">open it on this phone</a>.</p>
+          <canvas id="qrCanvas"></canvas>
+          <p id="qrStatus" class="muted mono"></p>
+        </div>
         <pre id="log" class="mono log"></pre>
       </section>
 
       <section class="card">
         <h2>Rotate controller</h2>
+        <p class="muted">
+          Hand control to another address. From a passport-controlled record this needs a scan.
+          To return a record to passport control, rotate to the controller contract address.
+        </p>
         <label>
           New controller address
           <input id="newController" type="text" placeholder="0x…" />

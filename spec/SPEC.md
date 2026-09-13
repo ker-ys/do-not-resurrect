@@ -85,7 +85,25 @@ The controller may hand control to a new address via `rotate` or `rotateSigned`.
 
 ### Key loss
 
-If the controller key is lost, the record is frozen at its last state. This is deliberate. A frozen DO_NOT_RESURRECT is the safe failure mode. Subjects who want recovery should set the controller to a smart account with their chosen recovery policy.
+If the controller key is lost, the record is frozen at its last state. This is deliberate. A frozen DO_NOT_RESURRECT is the safe failure mode. Subjects who want recovery should set the controller to a smart account with their chosen recovery policy, or to the PassportController below.
+
+### Passport control
+
+`PassportController` is a contract that can be the controller of any subject. It authorises writes with a ZKPassport proof instead of a signature:
+
+1. The proof must verify against the ZKPassport RootVerifier (same address on every supported chain).
+2. It must be scoped to the controller's configured domain and the scope `dnr`.
+3. It must carry a real (non-mock) nullifier unless the proof declares dev mode, which the verifier only honours on testnets.
+4. It must be bound to the current chain id.
+5. Its custom data must equal the lowercase hex of the **binding hash** of the action:
+   - declare: `keccak256(abi.encode("dnr.declare", controller, subject, kind, conditionsHash, keccak256(uri), nonce))`
+   - rotate: `keccak256(abi.encode("dnr.rotate", controller, subject, newController, nonce))`
+
+The first declaration for a subject through the controller records the proof's nullifier as the subject's holder. Every later action must carry the same nullifier. The holder mapping is never cleared, so a subject rotated to a wallet and later rotated back is still owned by the same passport.
+
+Because the binding includes the registry nonce, a proof authorises exactly one action and cannot be replayed. Because it includes every field of the directive, the holder cannot be shown one directive and have another recorded.
+
+The registry's commit-reveal still applies to the first claim. Anyone may post the commitment on the controller's behalf; the claim itself needs the proof.
 
 ## 7. Signed message format
 
@@ -133,6 +151,6 @@ Store the document somewhere content-addressed (IPFS, Arweave) and also keep cop
 
 ## 10. Out of scope for v1
 
-- Proof that the person making the declaration is the person the genome belongs to. In v1, anyone can claim any subject first. The genome hash is unguessable without the genome, which is protection enough against strangers, but not against someone who has your sequence. Binding declarations to a zk-passport proof at claim time is planned for v2.
+- Proof that the person making the declaration is the person the genome belongs to. Anyone can claim any subject first. The genome hash is unguessable without the genome, which is protection enough against strangers, but not against someone who has your sequence. The passport controller proves the claimant is a real, unique passport holder, not that they own the genome.
 - Enforcement.
 - Determining death.

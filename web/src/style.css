@@ -50,3 +50,5 @@ pre.mono { background: var(--bg); border: 1px solid var(--line); padding: 0.75re
 #status { display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
 footer { margin-top: 3rem; font-size: 0.85rem; color: var(--muted); }
 a { color: inherit; }
+#qr { margin-top: 1rem; text-align: center; }
+#qr canvas { background: #fff; padding: 8px; max-width: 100%; height: auto; }

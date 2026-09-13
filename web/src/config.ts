@@ -1,16 +1,42 @@
 import { mainnet, sepolia, type Chain } from "viem/chains";
 import type { Address } from "viem";
+import type { ZkChain } from "./passport";
 
 export interface Deployment {
   chain: Chain;
+  zkChain: ZkChain;
   registry: Address | null;
+  controller: Address | null;
   rpc: string;
+  /** ZKPassport dev mode: accept mock passports. Testnets only. */
+  devMode: boolean;
 }
+
+/**
+ * The ZKPassport domain the PassportController was deployed with. Proofs are
+ * scoped to it; a proof for another domain fails verification. Must match
+ * PassportController.domain() on the target chain.
+ */
+export const ZK_DOMAIN = "donotresurrect.eth";
 
 // Canonical deployment is mainnet. Others are mirrors; mainnet wins on conflict.
 export const deployments: Deployment[] = [
-  { chain: mainnet, registry: null, rpc: "https://ethereum-rpc.publicnode.com" },
-  { chain: sepolia, registry: null, rpc: "https://ethereum-sepolia-rpc.publicnode.com" },
+  {
+    chain: mainnet,
+    zkChain: "ethereum",
+    registry: null,
+    controller: null,
+    rpc: "https://ethereum-rpc.publicnode.com",
+    devMode: false,
+  },
+  {
+    chain: sepolia,
+    zkChain: "ethereum_sepolia",
+    registry: null,
+    controller: null,
+    rpc: "https://ethereum-sepolia-rpc.publicnode.com",
+    devMode: true,
+  },
 ];
 
 export const KIND_NAMES = ["NONE", "DO_NOT_RESURRECT", "RESURRECT_ONLY_IF", "RESURRECT"] as const;

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="96" fill="#0b0c0e"/>
+  <circle cx="256" cy="256" r="150" fill="none" stroke="#c9b458" stroke-width="22"/>
+  <line x1="150" y1="362" x2="362" y2="150" stroke="#c9b458" stroke-width="22" stroke-linecap="round"/>
+  <text x="256" y="470" text-anchor="middle" font-family="Georgia, serif" font-size="56" fill="#e6e4de" letter-spacing="6">DNR</text>
+</svg>
