@@ -1,0 +1,52 @@
+:root {
+  --bg: #0b0c0e;
+  --fg: #e6e4de;
+  --muted: #8a877f;
+  --card: #141518;
+  --line: #26282d;
+  --accent: #c9b458;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #f5f3ee;
+    --fg: #1a1a1a;
+    --muted: #6b6860;
+    --card: #ffffff;
+    --line: #dcd9d1;
+    --accent: #8a7a2a;
+    color-scheme: light;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font: 16px/1.55 Georgia, "Times New Roman", serif;
+}
+main { max-width: 720px; margin: 0 auto; padding: 3rem 1.25rem 5rem; }
+header { margin-bottom: 2rem; }
+h1 { font-size: 2.4rem; font-weight: normal; letter-spacing: 0.02em; margin: 0 0 0.5rem; }
+h2 { font-size: 1.1rem; font-weight: normal; text-transform: uppercase; letter-spacing: 0.12em; margin: 0 0 0.75rem; color: var(--accent); }
+.lede { font-size: 1.1rem; color: var(--muted); }
+.card { background: var(--card); border: 1px solid var(--line); padding: 1.25rem 1.5rem; margin-bottom: 1.25rem; }
+.muted { color: var(--muted); }
+label { display: block; margin: 0.75rem 0; font-size: 0.9rem; color: var(--muted); }
+input, textarea, select {
+  display: block; width: 100%; margin-top: 0.3rem; padding: 0.5rem 0.6rem;
+  background: var(--bg); color: var(--fg); border: 1px solid var(--line);
+  font: 14px/1.4 ui-monospace, Menlo, monospace;
+}
+button {
+  background: var(--fg); color: var(--bg); border: 0; padding: 0.55rem 1rem;
+  font: 14px ui-monospace, Menlo, monospace; cursor: pointer; letter-spacing: 0.04em;
+}
+button:disabled { opacity: 0.35; cursor: not-allowed; }
+.row { display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; margin-top: 0.75rem; }
+.mono { font: 13px/1.5 ui-monospace, Menlo, monospace; word-break: break-all; }
+pre.mono { background: var(--bg); border: 1px solid var(--line); padding: 0.75rem; margin: 0.75rem 0 0; white-space: pre-wrap; }
+.log { min-height: 2.5rem; max-height: 16rem; overflow: auto; }
+#status { display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
+footer { margin-top: 3rem; font-size: 0.85rem; color: var(--muted); }
+a { color: inherit; }

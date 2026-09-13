@@ -1,0 +1,12 @@
+# foundry
+contracts/out/
+contracts/cache/
+contracts/broadcast/**/dry-run/
+# web
+web/node_modules/
+web/dist/
+# env
+.env
+.env.*
+!.env.example
+.DS_Store

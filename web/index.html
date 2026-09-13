@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Do Not Resurrect</title>
+    <meta name="description" content="An onchain registry of posthumous directives. The latest signed directive is binding." />
+    <link rel="stylesheet" href="./src/style.css" />
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>Do Not Resurrect</h1>
+        <p class="lede">
+          A registry of what you want done if someone can one day rebuild you from your brain.
+          The latest directive you record is binding. Nobody can edit it but you. Nobody can take it down.
+        </p>
+      </header>
+
+      <section id="status" class="card muted">
+        <div id="net">No wallet connected.</div>
+        <button id="connect">Connect wallet</button>
+      </section>
+
+      <section class="card">
+        <h2>1. Subject</h2>
+        <p>
+          Your subject is a 32-byte commitment. The recommended scheme is a hash of your genome fingerprint,
+          because DNA is the one identifier a resurrector can check against preserved tissue.
+          See <a href="https://github.com/ker-ys/do-not-resurrect/blob/main/spec/SPEC.md">the spec</a>.
+        </p>
+        <label>
+          Scheme
+          <select id="scheme">
+            <option value="g1">G1 genome fingerprint (hash of text below)</option>
+            <option value="raw">Raw bytes32 (paste a 0x… value)</option>
+          </select>
+        </label>
+        <label>
+          Fingerprint or raw value
+          <textarea id="fp" rows="3" placeholder="canonical fingerprint text, or 0x…"></textarea>
+        </label>
+        <div class="row">
+          <code id="subject" class="mono">subject: —</code>
+          <button id="lookup" disabled>Look up</button>
+        </div>
+        <pre id="record" class="mono" hidden></pre>
+      </section>
+
+      <section class="card">
+        <h2>2. Directive</h2>
+        <label>
+          Kind
+          <select id="kind">
+            <option value="1">DO_NOT_RESURRECT</option>
+            <option value="2">RESURRECT_ONLY_IF</option>
+            <option value="3">RESURRECT</option>
+            <option value="0">NONE (withdraw)</option>
+          </select>
+        </label>
+        <p id="kindDesc" class="muted"></p>
+        <label>
+          Conditions document (optional, plain text). Hashed locally; only the hash goes onchain.
+          <textarea id="doc" rows="6" placeholder="Scheme: G1. I do not consent to …"></textarea>
+        </label>
+        <label>
+          Document URI (optional)
+          <input id="uri" type="text" placeholder="ipfs://… or ar://…" />
+        </label>
+        <code id="docHash" class="mono">conditionsHash: 0x0000…</code>
+      </section>
+
+      <section class="card">
+        <h2>3. Record it</h2>
+        <p>
+          First time for this subject: <b>commit</b>, wait one block, then <b>declare</b>.
+          Updates only need <b>declare</b>. The latest one wins.
+        </p>
+        <div class="row">
+          <button id="commit" disabled>Commit</button>
+          <button id="declare" disabled>Declare</button>
+        </div>
+        <pre id="log" class="mono log"></pre>
+      </section>
+
+      <section class="card">
+        <h2>Rotate controller</h2>
+        <label>
+          New controller address
+          <input id="newController" type="text" placeholder="0x…" />
+        </label>
+        <button id="rotate" disabled>Rotate</button>
+      </section>
+
+      <footer>
+        <p>
+          CC0. A <a href="https://github.com/ker-ys">Ys</a> project.
+          <a href="https://github.com/ker-ys/do-not-resurrect">Source</a>.
+          This page is static and can be pinned to IPFS; it talks to the chain directly.
+        </p>
+      </footer>
+    </main>
+    <script type="module" src="./src/main.ts"></script>
+  </body>
+</html>
